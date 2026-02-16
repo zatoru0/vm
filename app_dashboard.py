@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import psycopg2
 from datetime import datetime, timedelta  # <--- บรรทัดนี้สำคัญมาก ห้ามขาด!
 import plotly.express as px
 # การตั้งค่าหน้าเว็บ
@@ -58,6 +59,7 @@ try:
 except Exception as e:
 
     st.error(f"Error connecting to database: {e}")
+
 
 
 
