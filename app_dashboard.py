@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 from datetime import datetime
+import pytz
 
 # --- 1. ตั้งค่าการเชื่อมต่อ ---
 DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres"
@@ -10,7 +11,14 @@ DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-n
 def get_data():
     try:
         conn = psycopg2.connect(DB_URL)
-        query = "SELECT datetime, amount_paid, water_volume, payment_method, payment_status FROM transactions ORDER BY datetime DESC"
+        # ใช้คำสั่ง AT TIME ZONE เพื่อปรับจาก UTC เป็น Asia/Bangkok
+        query = """
+            SELECT 
+                datetime AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok' as datetime, 
+                amount_paid, water_volume, payment_method, payment_status 
+            FROM transactions 
+            ORDER BY datetime DESC
+        """
         df = pd.read_sql(query, conn)
         conn.close()
         return df
@@ -150,3 +158,4 @@ with tab2:
             st.dataframe(df_display, use_container_width=True, height=400)
         else:
             st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
+
