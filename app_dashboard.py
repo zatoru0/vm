@@ -81,8 +81,9 @@ with tab1:
    cols = st.columns(4)
     for i, p in enumerate(products):
         with cols[i]:
-            st.image(p['img'], width=80)
-            if st.button(f"{p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
+            st.image(p['img'], width=100) # แสดงรูปภาพสินค้า
+            # แก้ไขจาก p['label'] เป็น p['name']
+            if st.button(f" {p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
                 st.session_state.selected_price = p['price']
     
     st.markdown("---")
@@ -142,6 +143,7 @@ with tab2:
             st.dataframe(df_display, use_container_width=True, height=400)
         else:
             st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
+
 
 
 
