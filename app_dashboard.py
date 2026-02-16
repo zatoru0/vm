@@ -8,16 +8,15 @@ st.set_page_config(page_title="VM", layout="wide")
 
 # ฟังก์ชันเชื่อมต่อ Database
 def get_data():
-    conn = psycopg2.connect(
-        user="postgres",
-        password="210443", # เปลี่ยนเป็นรหัสผ่านของคุณ
-        host="localhost",
-        port="5432",
-        database="postgres"
-    )
-    query = "SELECT * FROM transactions"
-    df = pd.read_sql(query, conn)
-    conn.close()
+    # จำลองข้อมูลแทนการเชื่อมต่อ PostgreSQL
+    data = {
+        'datetime': [datetime.now() - timedelta(hours=i) for i in range(20)],
+        'amount_paid': [5, 10, 15, 10, 20, 5, 10, 15, 10, 5, 10, 20, 15, 10, 5, 10, 10, 5, 20, 10],
+        'water_volume': [3.3, 6.6, 9.9, 6.6, 13.2, 3.3, 6.6, 9.9, 6.6, 3.3, 6.6, 13.2, 9.9, 6.6, 3.3, 6.6, 6.6, 3.3, 13.2, 6.6],
+        'payment_method': ['Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code', 'Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code', 
+                          'Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code', 'Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code']
+    }
+    df = pd.DataFrame(data)
     return df
 
 # ส่วนหัวของ Dashboard
@@ -60,4 +59,5 @@ try:
     st.dataframe(df.sort_values(by='datetime', ascending=False).head(10), use_container_width=True)
 
 except Exception as e:
+
     st.error(f"Error connecting to database: {e}")
