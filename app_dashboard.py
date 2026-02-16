@@ -49,10 +49,10 @@ def check_admin_login():
         st.session_state.admin_logged_in = False
 
     if not st.session_state.admin_logged_in:
-        st.markdown("### เฉพาะผู้ดูแลระบบ (Admin Only)")
+        st.markdown("### Admin Only")
         password = st.text_input("กรุณาใส่รหัสผ่านเพื่อดูประวัติและจัดการข้อมูล", type="password")
         if st.button("ตกลง"):
-            if password == "210443":  # <--- ตั้งรหัสผ่านแอดมินที่นี่
+            if password == "1234":  # <--- ตั้งรหัสผ่านแอดมินที่นี่
                 st.session_state.admin_logged_in = True
                 st.rerun()
             else:
@@ -142,6 +142,7 @@ with tab2:
             st.dataframe(df_display, use_container_width=True, height=400)
         else:
             st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
+
 
 
 
