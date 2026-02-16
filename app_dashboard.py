@@ -11,11 +11,10 @@ DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-n
 def get_data():
     try:
         conn = psycopg2.connect(DB_URL)
-        # ปรับเวลาจากฐานข้อมูล (UTC) ให้เป็นเวลาไทย (Asia/Bangkok)
         query = """
             SELECT 
                 datetime AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok' as datetime, 
-                amount_paid, water_volume, payment_method, payment_status 
+                amount_paid, payment_method, payment_status 
             FROM transactions 
             ORDER BY datetime DESC
         """
@@ -151,7 +150,8 @@ with tab2:
                     st.rerun()
 
             df_display = df.copy()
-            df_display.columns = ['วัน-เวลา (ไทย)', 'ยอดเงิน', 'ปริมาณ(L)', 'วิธีจ่าย', 'สถานะ']
+            df_display.columns = ['วัน-เวลา (ไทย)', 'ยอดเงิน', 'วิธีจ่าย', 'สถานะ']
             st.dataframe(df_display, use_container_width=True, height=450)
         else:
             st.info("ไม่มีข้อมูลการขาย")
+
