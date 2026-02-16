@@ -75,7 +75,7 @@ with tab1:
         {"name": "น้ำดื่มเล็ก", "price": 5, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
         {"name": "น้ำดื่มกลาง", "price": 10, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
         {"name": "น้ำดื่มใหญ่", "price": 15, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่มจุใจ", "price": 20, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
+        {"name": "Beer", "price": 20, "img": "https://www.flaticon.com/free-icon/beer_6006556"},
     ]
     
     cols = st.columns(4)
@@ -93,7 +93,7 @@ with tab1:
         c1, c2 = st.columns([1, 4])
         if c1.button("ยืนยันการซื้อ", type="primary", use_container_width=True):
             if save_transaction(st.session_state.selected_price, method):
-                st.toast(f"ขอบคุณครับ! ระบบกำลังจ่ายน้ำ {round(st.session_state.selected_price * 0.66, 2)} ลิตร")
+                st.toast(f"ขอบคุณครับ!{round(st.session_state.selected_price * 0.66, 2)} ลิตร")
                 del st.session_state.selected_price
                 # ไม่รีรันทันทีเพื่อให้เห็นข้อความสำเร็จ
     else:
@@ -142,5 +142,6 @@ with tab2:
             st.dataframe(df_display, use_container_width=True, height=400)
         else:
             st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
+
 
 
