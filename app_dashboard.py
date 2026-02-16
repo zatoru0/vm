@@ -72,10 +72,10 @@ with tab1:
     st.info("กรุณาเลือกขนาดน้ำดื่มที่คุณต้องการ")
     
     products = [
-        {"name": "น้ำดื่มเล็ก", "price": 5, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่มกลาง", "price": 10, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่มใหญ่", "price": 15, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "Beer", "price": 20, "img": "https://www.flaticon.com/free-icon/beer_6006556"},
+        {"name": "Water", "price": 5, "img": "https://cdn-icons-png.flaticon.com/128/824/824239.png"},
+        {"name": "Coffee", "price": 10, "img": "https://cdn-icons-png.flaticon.com/128/1047/1047503.png"},
+        {"name": "Juice", "price": 15, "img": "https://cdn-icons-png.flaticon.com/128/3361/3361456.png"},
+        {"name": "Beer", "price": 20, "img": "https://cdn-icons-png.flaticon.com/128/6006/6006556.png"},
     ]
     
     cols = st.columns(4)
@@ -142,6 +142,7 @@ with tab2:
             st.dataframe(df_display, use_container_width=True, height=400)
         else:
             st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
+
 
 
 
