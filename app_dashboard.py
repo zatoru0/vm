@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 from datetime import datetime
-import pytz
+import pytz  # สำหรับจัดการเวลาประเทศไทย
 
 # --- 1. ตั้งค่าการเชื่อมต่อ ---
 DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres"
@@ -11,7 +11,7 @@ DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-n
 def get_data():
     try:
         conn = psycopg2.connect(DB_URL)
-        # ใช้คำสั่ง AT TIME ZONE เพื่อปรับจาก UTC เป็น Asia/Bangkok
+        # ปรับเวลาจากฐานข้อมูล (UTC) ให้เป็นเวลาไทย (Asia/Bangkok)
         query = """
             SELECT 
                 datetime AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok' as datetime, 
@@ -30,9 +30,11 @@ def save_transaction(amount, method):
         conn = psycopg2.connect(DB_URL)
         cursor = conn.cursor()
         volume = round(amount * 0.66, 2)
-        query = """INSERT INTO transactions (machine_id, amount_paid, water_volume, payment_method, payment_status)  
-                   VALUES (%s, %s, %s, %s, %s)"""
-        cursor.execute(query, ('VM-001', amount, volume, method, 'Success'))
+        # บันทึกเวลาปัจจุบันโดยระบุเป็น UTC (เพื่อให้ AT TIME ZONE ใน get_data ทำงานถูกต้อง)
+        now_utc = datetime.now(pytz.utc)
+        query = """INSERT INTO transactions (machine_id, amount_paid, water_volume, payment_method, payment_status, datetime)  
+                   VALUES (%s, %s, %s, %s, %s, %s)"""
+        cursor.execute(query, ('VM-001', amount, volume, method, 'Success', now_utc))
         conn.commit()
         conn.close()
         return True
@@ -58,9 +60,9 @@ def check_admin_login():
 
     if not st.session_state.admin_logged_in:
         st.markdown("### Admin Only")
-        password = st.text_input("กรุณาใส่รหัสผ่านเพื่อดูประวัติและจัดการข้อมูล", type="password")
+        password = st.text_input("กรุณาใส่รหัสผ่านแอดมิน", type="password")
         if st.button("ตกลง"):
-            if password == "1234":  # <--- ตั้งรหัสผ่านแอดมินที่นี่
+            if password == "1234":
                 st.session_state.admin_logged_in = True
                 st.rerun()
             else:
@@ -71,10 +73,9 @@ def check_admin_login():
 # --- 4. ออกแบบหน้าเว็บ ---
 st.set_page_config(page_title="Vending IoT System", layout="wide")
 
-# ใส่ CSS เพื่อจัดให้รูปภาพ (st.image) อยู่ตรงกลาง
+# CSS เพื่อจัดให้รูปภาพอยู่ตรงกลางคอลัมน์
 st.markdown("""
     <style>
-    button[kind="primary"] { background-color: #007bff; border-color: #007bff; }
     [data-testid="stImage"] {
         display: flex;
         justify-content: center;
@@ -82,14 +83,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# "หน้าตู้กดน้ำ" 
-tab1, tab2 = st.tabs(["🛒 หน้าตู้กดน้ำ (Buy Now)", "📋 ระบบจัดการหลังบ้าน (Admin)"])
+tab1, tab2 = st.tabs(["🛒 หน้าตู้กดน้ำ (Buy Now)", "Admin"])
 
-# --- TAB 1: หน้าตู้กดน้ำ (ใครก็เข้าได้) ---
+# --- TAB 1: หน้าตู้กดน้ำ ---
 with tab1:
     st.title("Vending Machine")
-    st.info("กรุณาเลือกขนาดน้ำดื่มที่คุณต้องการ")
+    st.info("กรุณาเลือกรายการสินค้าที่คุณต้องการ")
     
+    # ข้อมูลสินค้าที่ตรงกับรูปภาพล่าสุดของคุณ
     products = [
         {"name": "Water", "price": 5, "img": "https://cdn-icons-png.flaticon.com/128/824/824239.png"},
         {"name": "Coffee", "price": 10, "img": "https://cdn-icons-png.flaticon.com/128/1047/1047503.png"},
@@ -100,30 +101,29 @@ with tab1:
     cols = st.columns(4)
     for i, p in enumerate(products):
         with cols[i]:
-            # แสดงรูปภาพ (จะอยู่ตรงกลางตาม CSS ด้านบน)
             st.image(p['img'], width=100)
             if st.button(f"{p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
                 st.session_state.selected_price = p['price']
+                st.session_state.selected_name = p['name']
     
     st.markdown("---")
     if 'selected_price' in st.session_state:
-        st.success(f"รายการที่เลือก: **{st.session_state.selected_price} บาท**")
+        st.success(f"คุณเลือก: **{st.session_state.selected_name}** ราคา **{st.session_state.selected_price} บาท**")
         method = st.radio("เลือกวิธีจ่ายเงิน", ["Cash", "QR_Code"], horizontal=True)
         
-        c1, c2 = st.columns([1, 4])
-        if c1.button("ยืนยันการซื้อ", type="primary", use_container_width=True):
+        if st.button("ยืนยันการซื้อ", type="primary", use_container_width=True):
             if save_transaction(st.session_state.selected_price, method):
-                st.toast(f"ขอบคุณครับ! จ่ายน้ำ {round(st.session_state.selected_price * 0.66, 2)} ลิตร")
+                st.toast(f"ขอบคุณครับ! จ่าย {st.session_state.selected_name} เรียบร้อย")
                 del st.session_state.selected_price
     else:
-        st.write("เลือกรายการด้านบนเพื่อเริ่มการสั่งซื้อ")
+        st.write("เลือกรายการด้านบนเพื่อเริ่มสั่งซื้อ")
 
-# --- TAB 2: ระบบจัดการหลังบ้าน (ต้อง Login) ---
+# --- TAB 2: ระบบจัดการหลังบ้าน ---
 with tab2:
     if check_admin_login():
         col_title, col_logout = st.columns([4, 1])
         with col_title:
-            st.title("ประวัติการขายทั้งหมด")
+            st.title("📋 รายการการขายล่าสุด")
         with col_logout:
             if st.button("ออกจากระบบ"):
                 st.session_state.admin_logged_in = False
@@ -136,26 +136,22 @@ with tab2:
             m1.metric("รายได้ทั้งหมด", f"฿ {df['amount_paid'].sum():,.2f}")
             m2.metric("จำนวนรายการ", f"{len(df)} ออเดอร์")
             
-            st.markdown("---")
-            
-            if st.button("🗑️ ล้างประวัติการขายทั้งหมด", type="secondary"):
+            if st.button("🗑️ ล้างประวัติทั้งหมด", type="secondary"):
                 st.session_state.confirm_delete = True
                 
             if st.session_state.get('confirm_delete'):
-                st.warning("⚠️ ข้อมูลจะหายถาวร ยืนยันการลบ?")
-                del_c1, del_c2 = st.columns(2)
-                if del_c1.button("ลบเลย", type="primary", use_container_width=True):
+                st.warning("⚠️ ยืนยันการลบประวัติถาวร?")
+                c1, c2 = st.columns(2)
+                if c1.button("ยืนยัน", type="primary"):
                     if clear_all_data():
-                        st.success("ล้างข้อมูลเรียบร้อย!")
                         st.session_state.confirm_delete = False
                         st.rerun()
-                if del_c2.button("ยกเลิก", use_container_width=True):
+                if c2.button("ยกเลิก"):
                     st.session_state.confirm_delete = False
                     st.rerun()
 
             df_display = df.copy()
-            df_display.columns = ['วัน-เวลา', 'ยอดเงิน', 'ปริมาณ(L)', 'วิธีจ่าย', 'สถานะ']
-            st.dataframe(df_display, use_container_width=True, height=400)
+            df_display.columns = ['วัน-เวลา (ไทย)', 'ยอดเงิน', 'ปริมาณ(L)', 'วิธีจ่าย', 'สถานะ']
+            st.dataframe(df_display, use_container_width=True, height=450)
         else:
-            st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
-
+            st.info("ไม่มีข้อมูลการขาย")
