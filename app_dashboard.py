@@ -9,7 +9,7 @@ st.set_page_config(page_title="VM", layout="wide")
 # ฟังก์ชันเชื่อมต่อ Database
 def get_data():
     # ใช้ Connection String เดียวกับด้านบน
-    db_url = "postgresql://postgres.ccudavykwzwwjavjlase:ใส่รหัสผ่านที่นี่@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+    db_url = "postgresql://postgres.ccudavykwzwwjavjlase:210443@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
     conn = psycopg2.connect(db_url)
     query = "SELECT * FROM transactions"
     df = pd.read_sql(query, conn)
@@ -58,5 +58,6 @@ try:
 except Exception as e:
 
     st.error(f"Error connecting to database: {e}")
+
 
 
