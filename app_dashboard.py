@@ -1,67 +1,63 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import psycopg2
-from datetime import datetime, timedelta  # <--- บรรทัดนี้สำคัญมาก ห้ามขาด!
-import plotly.express as px
-# การตั้งค่าหน้าเว็บ
-st.set_page_config(page_title="VM", layout="wide")
+import time
 
-# ฟังก์ชันเชื่อมต่อ Database
+# --- การตั้งค่าการเชื่อมต่อ (ใช้ตัวเดิมของคุณ) ---
+DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres"
+
+# --- ฟังก์ชันเขียนข้อมูล (สำหรับหน้า Simulator) ---
+def record_transaction(amount, method):
+    try:
+        conn = psycopg2.connect(DB_URL)
+        cursor = conn.cursor()
+        volume = round(amount * 0.66, 2)
+        query = """INSERT INTO transactions (machine_id, amount_paid, water_volume, payment_method, payment_status) 
+                   VALUES (%s, %s, %s, %s, %s)"""
+        cursor.execute(query, ('VM-001', amount, volume, method, 'Success'))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return False
+
+# --- ฟังก์ชันดึงข้อมูล (สำหรับหน้า Dashboard) ---
 def get_data():
-    # ใช้ Connection String เดียวกับด้านบน
-    db_url = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres"
-    conn = psycopg2.connect(db_url)
-    query = "SELECT * FROM transactions"
-    df = pd.read_sql(query, conn)
+    conn = psycopg2.connect(DB_URL)
+    df = pd.read_sql("SELECT * FROM transactions", conn)
     conn.close()
     return df
 
-# ส่วนหัวของ Dashboard
-st.title("Vending Machine")
-st.markdown("---")
+# --- ส่วนของการสร้างหน้าเว็บ ---
+st.title("🥤 Smart Vending System")
 
-try:
+# สร้าง Tab สลับหน้า
+tab1, tab2 = st.tabs(["📊 Dashboard", "🛒 Machine Simulator"])
+
+# --- หน้า Dashboard ---
+with tab1:
+    st.header("Real-time Analytics")
     df = get_data()
+    st.metric("Total Sales", f"{df['amount_paid'].sum()} THB")
+    st.line_chart(df.set_index('datetime')['amount_paid'])
 
-    # --- ส่วนที่ 1: สรุปตัวเลขสำคัญ (Metrics) ---
-    col1, col2, col3 = st.columns(3)
+# --- หน้า Simulator (เหมือนอยู่หน้าตู้จริง) ---
+with tab2:
+    st.header("หน้าจอจำลองหน้าตู้กดน้ำ")
+    st.info("กรุณาเลือกจำนวนเงินและวิธีชำระเงินเสมือนคุณอยู่ที่หน้าตู้")
+    
+    col1, col2 = st.columns(2)
     with col1:
-        st.metric("Total Sales (THB)", f"{df['amount_paid'].sum():,.2f}")
+        amount = st.selectbox("เลือกจำนวนเงิน (บาท)", [5, 10, 15, 20])
     with col2:
-        st.metric("Total Transactions", len(df))
-    with col3:
-        st.metric("Total Water Sold (Liters)", f"{df['water_volume'].sum():,.2f}")
+        method = st.radio("วิธีชำระเงิน", ["Cash", "QR_Code"])
 
-    st.markdown("---")
-
-    # --- ส่วนที่ 2: กราฟวิเคราะห์ข้อมูล ---
-    left_column, right_column = st.columns(2)
-
-    # กราฟยอดขายตามวิธีชำระเงิน
-    with left_column:
-        st.subheader("Payment Method Split")
-        fig_payment = px.pie(df, names='payment_method', values='amount_paid', hole=0.4)
-        st.plotly_chart(fig_payment, use_container_width=True)
-
-    # กราฟแนวโน้มยอดขายตามเวลา
-    with right_column:
-        st.subheader("Sales Trend")
-        df['datetime'] = pd.to_datetime(df['datetime'])
-        sales_trend = df.groupby(df['datetime'].dt.date)['amount_paid'].sum().reset_index()
-        fig_trend = px.line(sales_trend, x='datetime', y='amount_paid', markers=True)
-        st.plotly_chart(fig_trend, use_container_width=True)
-
-    # --- ส่วนที่ 3: ตารางข้อมูลล่าสุด ---
-    st.subheader("Recent Transactions")
-    st.dataframe(df.sort_values(by='datetime', ascending=False).head(10), use_container_width=True)
-
-except Exception as e:
-
-    st.error(f"Error connecting to database: {e}")
-
-
-
-
-
-
+    if st.button("💰 ยืนยันการชำระเงิน (ซื้อสินค้า)"):
+        with st.spinner('กำลังประมวลผล...'):
+            success = record_transaction(amount, method)
+            if success:
+                st.success(f"ชำระเงินสำเร็จ! จ่ายน้ำ {round(amount * 0.66, 2)} ลิตร")
+                st.balloons() # ใส่ Effect ฉลองหน่อย
+                time.sleep(2)
+                st.rerun() # รีเฟรชหน้าเพื่ออัปเดตข้อมูล
