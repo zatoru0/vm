@@ -22,7 +22,8 @@ def save_transaction(amount, method):
         conn = psycopg2.connect(DB_URL)
         cursor = conn.cursor()
         volume = round(amount * 0.66, 2)
-        query = "INSERT INTO transactions (machine_id, amount_paid, water_volume, payment_method, payment_status) VALUES (%s, %s, %s, %s, %s)"
+        query = """INSERT INTO transactions (machine_id, amount_paid, water_volume, payment_method, payment_status) 
+                   VALUES (%s, %s, %s, %s, %s)"""
         cursor.execute(query, ('VM-001', amount, volume, method, 'Success'))
         conn.commit()
         conn.close()
@@ -30,12 +31,10 @@ def save_transaction(amount, method):
     except:
         return False
 
-# --- ฟังก์ชัน: ล้างข้อมูลทั้งหมด ---
 def clear_all_data():
     try:
         conn = psycopg2.connect(DB_URL)
         cursor = conn.cursor()
-        # ลบข้อมูลและรีเซ็ต ID กลับไปเริ่มที่ 1
         cursor.execute("TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;")
         conn.commit()
         conn.close()
@@ -54,22 +53,20 @@ with tab1:
     st.title("📋 ประวัติการสั่งซื้อล่าสุด")
     df = get_data()
     
-    # ส่วนหัวและปุ่มล้างข้อมูล
     col_head, col_btn = st.columns([4, 1])
     with col_btn:
-        # ใช้ปุ่มล้างข้อมูลแบบมีกดยืนยัน (Confirmation)
-        if st.button("🗑️ ล้างประวัติทั้งหมด", type="secondary"):
+        if st.button("🗑️ ล้างประวัติทั้งหมด", type="secondary", use_container_width=True):
             st.session_state.confirm_delete = True
             
         if st.session_state.get('confirm_delete'):
-            st.warning("คุณแน่ใจใช่ไหมที่จะลบข้อมูลทั้งหมด?")
+            st.warning("⚠️ ยืนยันการลบข้อมูล?")
             c1, c2 = st.columns(2)
-            if c1.button("ใช่, ลบเลย", type="primary"):
+            if c1.button("ลบเลย", type="primary", use_container_width=True):
                 if clear_all_data():
                     st.success("ล้างข้อมูลสำเร็จ!")
                     st.session_state.confirm_delete = False
                     st.rerun()
-            if c2.button("ยกเลิก"):
+            if c2.button("ยกเลิก", use_container_width=True):
                 st.session_state.confirm_delete = False
                 st.rerun()
 
@@ -85,22 +82,26 @@ with tab1:
     else:
         st.info("ยังไม่มีรายการคำสั่งซื้อในขณะนี้")
 
-# --- TAB 2: SIMULATOR (เหมือนเดิม) ---
+# --- TAB 2: SIMULATOR (แก้ไขส่วนแสดงผลรูปภาพ) ---
 with tab2:
     st.title("🥤 ตู้กดน้ำดื่ม (Simulator)")
+    
     products = [
-        {"name": "น้ำดื่ม 5 บาท", "price": 5, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่ม 10 บาท", "price": 10, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่ม 15 บาท", "price": 15, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่ม 20 บาท", "price": 20, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
+        {"name": "น้ำดื่มเล็ก", "price": 5, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
+        {"name": "น้ำดื่มกลาง", "price": 10, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
+        {"name": "น้ำดื่มใหญ่", "price": 15, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
+        {"name": "น้ำดื่มจุใจ", "price": 20, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
     ]
     
     cols = st.columns(4)
     for i, p in enumerate(products):
         with cols[i]:
-            if st.button(f"💧 {p['label']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
+            st.image(p['img'], width=100) # แสดงรูปภาพสินค้า
+            # แก้ไขจาก p['label'] เป็น p['name']
+            if st.button(f"💧 {p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
                 st.session_state.selected_price = p['price']
     
+    st.markdown("---")
     if 'selected_price' in st.session_state:
         st.markdown(f"### 💰 จำนวนเงินที่ต้องชำระ: **{st.session_state.selected_price} บาท**")
         method = st.radio("เลือกวิธีจ่ายเงิน", ["Cash", "QR_Code"], horizontal=True)
@@ -108,5 +109,6 @@ with tab2:
         if st.button("ยืนยันการสั่งซื้อ ✅", type="primary", use_container_width=True):
             if save_transaction(st.session_state.selected_price, method):
                 st.success("สั่งซื้อสำเร็จ!")
+                st.balloons() # เพิ่มลูกเล่นเมื่อซื้อสำเร็จ
                 del st.session_state.selected_price
                 st.rerun()
