@@ -78,11 +78,16 @@ with tab1:
         {"name": "Beer", "price": 20, "img": "https://cdn-icons-png.flaticon.com/128/6006/6006556.png"},
     ]
     
-    cols = st.columns(4)
+   cols = st.columns(4)
     for i, p in enumerate(products):
         with cols[i]:
-            st.image(p['img'], width=80)
-            if st.button(f"💧 {p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
+            # สร้าง 3 คอลัมน์ย่อยภายในคอลัมน์หลัก เพื่อบีบให้รูปอยู่ตรงกลาง
+            # [1, 2, 1] หมายถึงคอลัมน์กลางจะกว้างเป็น 2 เท่าของซ้ายและขวา
+            sub_col1, sub_col2, sub_col3 = st.columns([1, 2, 1])
+            with sub_col2:
+                st.image(p['img'], use_container_width=True) # ปรับรูปให้ขยายเต็มช่องกลาง
+            
+            if st.button(f"{p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
                 st.session_state.selected_price = p['price']
     
     st.markdown("---")
@@ -142,6 +147,7 @@ with tab2:
             st.dataframe(df_display, use_container_width=True, height=400)
         else:
             st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
+
 
 
 
