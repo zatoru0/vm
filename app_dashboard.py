@@ -8,15 +8,12 @@ st.set_page_config(page_title="VM", layout="wide")
 
 # ฟังก์ชันเชื่อมต่อ Database
 def get_data():
-    # จำลองข้อมูลแทนการเชื่อมต่อ PostgreSQL
-    data = {
-        'datetime': [datetime.now() - timedelta(hours=i) for i in range(20)],
-        'amount_paid': [5, 10, 15, 10, 20, 5, 10, 15, 10, 5, 10, 20, 15, 10, 5, 10, 10, 5, 20, 10],
-        'water_volume': [3.3, 6.6, 9.9, 6.6, 13.2, 3.3, 6.6, 9.9, 6.6, 3.3, 6.6, 13.2, 9.9, 6.6, 3.3, 6.6, 6.6, 3.3, 13.2, 6.6],
-        'payment_method': ['Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code', 'Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code', 
-                          'Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code', 'Cash', 'QR_Code', 'Cash', 'Cash', 'QR_Code']
-    }
-    df = pd.DataFrame(data)
+    # ใช้ Connection String เดียวกับด้านบน
+    db_url = "postgresql://postgres.ccudavykwzwwjavjlase:ใส่รหัสผ่านที่นี่@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+    conn = psycopg2.connect(db_url)
+    query = "SELECT * FROM transactions"
+    df = pd.read_sql(query, conn)
+    conn.close()
     return df
 
 # ส่วนหัวของ Dashboard
@@ -61,4 +58,5 @@ try:
 except Exception as e:
 
     st.error(f"Error connecting to database: {e}")
+
 
