@@ -3,7 +3,7 @@ import pandas as pd
 import psycopg2
 from datetime import datetime
 
-# --- 1. ตั้งค่าการเชื่อมต่อ (กรุณาตรวจสอบรหัสผ่านให้ถูกต้อง) ---
+# --- 1. ตั้งค่าการเชื่อมต่อ ---
 DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres"
 
 # --- 2. ฟังก์ชันจัดการข้อมูล ---
@@ -22,7 +22,7 @@ def save_transaction(amount, method):
         conn = psycopg2.connect(DB_URL)
         cursor = conn.cursor()
         volume = round(amount * 0.66, 2)
-        query = """INSERT INTO transactions (machine_id, amount_paid, water_volume, payment_method, payment_status) 
+        query = """INSERT INTO transactions (machine_id, amount_paid, water_volume, payment_method, payment_status)  
                    VALUES (%s, %s, %s, %s, %s)"""
         cursor.execute(query, ('VM-001', amount, volume, method, 'Success'))
         conn.commit()
@@ -63,6 +63,17 @@ def check_admin_login():
 # --- 4. ออกแบบหน้าเว็บ ---
 st.set_page_config(page_title="Vending IoT System", layout="wide")
 
+# ใส่ CSS เพื่อจัดให้รูปภาพ (st.image) อยู่ตรงกลาง
+st.markdown("""
+    <style>
+    button[kind="primary"] { background-color: #007bff; border-color: #007bff; }
+    [data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # "หน้าตู้กดน้ำ" 
 tab1, tab2 = st.tabs(["🛒 หน้าตู้กดน้ำ (Buy Now)", "📋 ระบบจัดการหลังบ้าน (Admin)"])
 
@@ -78,12 +89,12 @@ with tab1:
         {"name": "Beer", "price": 20, "img": "https://cdn-icons-png.flaticon.com/128/6006/6006556.png"},
     ]
     
-   cols = st.columns(4)
+    cols = st.columns(4)
     for i, p in enumerate(products):
         with cols[i]:
-            st.image(p['img'], width=100) # แสดงรูปภาพสินค้า
-            # แก้ไขจาก p['label'] เป็น p['name']
-            if st.button(f" {p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
+            # แสดงรูปภาพ (จะอยู่ตรงกลางตาม CSS ด้านบน)
+            st.image(p['img'], width=100)
+            if st.button(f"{p['name']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
                 st.session_state.selected_price = p['price']
     
     st.markdown("---")
@@ -94,9 +105,8 @@ with tab1:
         c1, c2 = st.columns([1, 4])
         if c1.button("ยืนยันการซื้อ", type="primary", use_container_width=True):
             if save_transaction(st.session_state.selected_price, method):
-                st.toast(f"ขอบคุณครับ!{round(st.session_state.selected_price * 0.66, 2)} ลิตร")
+                st.toast(f"ขอบคุณครับ! จ่ายน้ำ {round(st.session_state.selected_price * 0.66, 2)} ลิตร")
                 del st.session_state.selected_price
-                # ไม่รีรันทันทีเพื่อให้เห็นข้อความสำเร็จ
     else:
         st.write("เลือกรายการด้านบนเพื่อเริ่มการสั่งซื้อ")
 
@@ -113,7 +123,6 @@ with tab2:
 
         df = get_data()
         
-        # ส่วน Metrics สรุปยอด
         if not df.empty:
             m1, m2 = st.columns(2)
             m1.metric("รายได้ทั้งหมด", f"฿ {df['amount_paid'].sum():,.2f}")
@@ -121,7 +130,6 @@ with tab2:
             
             st.markdown("---")
             
-            # ปุ่มล้างประวัติ (แอดมินเท่านั้นที่เห็น)
             if st.button("🗑️ ล้างประวัติการขายทั้งหมด", type="secondary"):
                 st.session_state.confirm_delete = True
                 
@@ -137,16 +145,8 @@ with tab2:
                     st.session_state.confirm_delete = False
                     st.rerun()
 
-            # แสดงตารางประวัติ
             df_display = df.copy()
             df_display.columns = ['วัน-เวลา', 'ยอดเงิน', 'ปริมาณ(L)', 'วิธีจ่าย', 'สถานะ']
             st.dataframe(df_display, use_container_width=True, height=400)
         else:
             st.info("ไม่มีข้อมูลการขายในฐานข้อมูล")
-
-
-
-
-
-
-
