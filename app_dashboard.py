@@ -1,17 +1,17 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
-import plotly.express as px
 from datetime import datetime
 
-# --- 1. ตั้งค่าการเชื่อมต่อ (ใช้ข้อมูลเดิมของคุณ) ---
+# --- 1. ตั้งค่าการเชื่อมต่อ ---
 DB_URL = "postgresql://postgres.ccudavykwzwwjavjlase:IksRDasWWFb2ni2X@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres"
 
 # --- 2. ฟังก์ชันจัดการข้อมูล ---
 def get_data():
     try:
         conn = psycopg2.connect(DB_URL)
-        df = pd.read_sql("SELECT * FROM transactions ORDER BY datetime DESC", conn)
+        query = "SELECT datetime, amount_paid, water_volume, payment_method, payment_status FROM transactions ORDER BY datetime DESC"
+        df = pd.read_sql(query, conn)
         conn.close()
         return df
     except:
@@ -30,66 +30,83 @@ def save_transaction(amount, method):
     except:
         return False
 
+# --- ฟังก์ชันใหม่: ล้างข้อมูลทั้งหมด ---
+def clear_all_data():
+    try:
+        conn = psycopg2.connect(DB_URL)
+        cursor = conn.cursor()
+        # ลบข้อมูลและรีเซ็ต ID กลับไปเริ่มที่ 1
+        cursor.execute("TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;")
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        st.error(f"เกิดข้อผิดพลาด: {e}")
+        return False
+
 # --- 3. ออกแบบหน้าเว็บ ---
 st.set_page_config(page_title="Vending IoT System", layout="wide")
 
-# สร้าง Tabs สำหรับสลับหน้า
-tab1, tab2 = st.tabs(["📊 Dashboard Analytics", "🛒 Water Simulator"])
+tab1, tab2 = st.tabs(["📋 รายการคำสั่งซื้อ", "🛒 หน้าตู้กดน้ำ"])
 
-# --- TAB 1: DASHBOARD ---
+# --- TAB 1: รายการคำสั่งซื้อ ---
 with tab1:
-    st.title("📈 Dashboard Performance")
+    st.title("📋 ประวัติการสั่งซื้อล่าสุด")
     df = get_data()
     
+    # ส่วนหัวและปุ่มล้างข้อมูล
+    col_head, col_btn = st.columns([4, 1])
+    with col_btn:
+        # ใช้ปุ่มล้างข้อมูลแบบมีกดยืนยัน (Confirmation)
+        if st.button("🗑️ ล้างประวัติทั้งหมด", type="secondary"):
+            st.session_state.confirm_delete = True
+            
+        if st.session_state.get('confirm_delete'):
+            st.warning("คุณแน่ใจใช่ไหมที่จะลบข้อมูลทั้งหมด?")
+            c1, c2 = st.columns(2)
+            if c1.button("ใช่, ลบเลย", type="primary"):
+                if clear_all_data():
+                    st.success("ล้างข้อมูลสำเร็จ!")
+                    st.session_state.confirm_delete = False
+                    st.rerun()
+            if c2.button("ยกเลิก"):
+                st.session_state.confirm_delete = False
+                st.rerun()
+
     if not df.empty:
-        # ส่วน Metrics (เลียนแบบภาพ 181151)
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Income", f"฿ {df['amount_paid'].sum():,.2f}", "+12%")
-        m2.metric("Orders", len(df), "+5%")
-        m3.metric("Water Sold (L)", f"{df['water_volume'].sum():,.2f} L")
+        col1, col2 = st.columns(2)
+        col1.metric("ยอดรวมรายได้ทั้งหมด", f"฿ {df['amount_paid'].sum():,.2f}")
+        col2.metric("จำนวนคำสั่งซื้อทั้งหมด", f"{len(df)} รายการ")
         
         st.markdown("---")
-        
-        # กราฟยอดขาย
-        fig = px.line(df.groupby('datetime')['amount_paid'].sum().reset_index(), 
-                     x='datetime', y='amount_paid', title="Sales Trend",
-                     template="plotly_white")
-        st.plotly_chart(fig, use_container_width=True)
+        df_display = df.copy()
+        df_display.columns = ['วัน-เวลาที่สั่งซื้อ', 'ราคา (บาท)', 'ปริมาณน้ำ (ลิตร)', 'วิธีชำระเงิน', 'สถานะ']
+        st.dataframe(df_display, use_container_width=True, height=500)
     else:
-        st.warning("ยังไม่มีข้อมูลการขาย")
+        st.info("ยังไม่มีรายการคำสั่งซื้อในขณะนี้")
 
-# --- TAB 2: SIMULATOR (เลียนแบบภาพ 181131) ---
+# --- TAB 2: SIMULATOR (เหมือนเดิม) ---
 with tab2:
-    st.title("🥤 เลือกซื้อน้ำดื่ม")
-    st.subheader("สัมผัสหน้าจอเพื่อเลือกรายการ")
-    
-    # จำลองรายการสินค้า
+    st.title("🥤 ตู้กดน้ำดื่ม (Simulator)")
     products = [
-        {"name": "น้ำดื่ม 5 บาท", "price": 5, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่ม 10 บาท", "price": 10, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่ม 15 บาท", "price": 15, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
-        {"name": "น้ำดื่ม 20 บาท", "price": 20, "img": "https://cdn-icons-png.flaticon.com/512/3100/3100566.png"},
+        {"price": 5, "label": "น้ำดื่มขนาดเล็ก"},
+        {"price": 10, "label": "น้ำดื่มขนาดกลาง"},
+        {"price": 15, "label": "น้ำดื่มขนาดใหญ่"},
+        {"price": 20, "label": "น้ำดื่มจุใจ"}
     ]
     
-    # แสดงรูปสินค้าเป็นคอลัมน์
     cols = st.columns(4)
     for i, p in enumerate(products):
         with cols[i]:
-            st.image(p['img'], width=100)
-            st.write(f"**{p['name']}**")
-            if st.button(f"เลือก {p['price']}.-", key=f"btn_{i}"):
+            if st.button(f"💧 {p['label']}\n\n{p['price']} บาท", key=f"p_{i}", use_container_width=True):
                 st.session_state.selected_price = p['price']
     
-    st.markdown("---")
-    
-    # เลือกวิธีชำระเงินและกดยืนยัน
     if 'selected_price' in st.session_state:
-        st.info(f"คุณเลือก: {st.session_state.selected_price} บาท")
-        pay_method = st.radio("เลือกวิธีชำระเงิน", ["Cash", "QR_Code"], horizontal=True)
+        st.markdown(f"### 💰 จำนวนเงินที่ต้องชำระ: **{st.session_state.selected_price} บาท**")
+        method = st.radio("เลือกวิธีจ่ายเงิน", ["Cash", "QR_Code"], horizontal=True)
         
-        if st.button("✅ ยืนยันการซื้อ", type="primary"):
-            if save_transaction(st.session_state.selected_price, pay_method):
-                st.success("ขอบคุณที่ใช้บริการ! กำลังจ่ายน้ำ...")
-                st.balloons()
-                del st.session_state.selected_price # ล้างค่าหลังซื้อเสร็จ
+        if st.button("ยืนยันการสั่งซื้อ ✅", type="primary", use_container_width=True):
+            if save_transaction(st.session_state.selected_price, method):
+                st.success("สั่งซื้อสำเร็จ!")
+                del st.session_state.selected_price
                 st.rerun()
